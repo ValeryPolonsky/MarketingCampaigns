@@ -2,78 +2,94 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import pandas as pd
+from sklearn.cluster import KMeans
 
 # Importing the dataset
+# =============================================================================
+# all_columns_without_deposit = ['age','job','marital','education','default',
+#                                'balance','housing','loan','contact','day',
+#                                'month','duration','campaign','pdays','previous',
+#                                'poutcome','deposit']
+# =============================================================================
 dataset = pd.read_csv('data.csv')
-dataset_yes = dataset[dataset["deposit"] == 'yes']
-dataset_no = dataset[dataset["deposit"] == 'no']
-#dataset_merged = pd.concat([dataset_yes,dataset_no])
-dataset_merged = pd.concat([dataset_yes])
-dataset_merged = dataset_merged.sample(frac=1).reset_index(drop=True)
+dataset = dataset[dataset['deposit'] == 'no']
 
-X = dataset_merged.values
+X = dataset.iloc[:, :-1].values
 
 # Taking care of missing data
 from sklearn.impute import SimpleImputer
+numeric_columns = [0,5,9,11,12,13,14]
 imputer = SimpleImputer(missing_values=np.nan, strategy='mean')
-imputer.fit(X[:, [0,5,9,11,12,13,14]])
-X[:, [0,5,9,11,12,13,14]] = imputer.transform(X[:, [0,5,9,11,12,13,14]])
+imputer.fit(X[:, numeric_columns])
+X[:, numeric_columns] = imputer.transform(X[:, numeric_columns])
 
 from sklearn.impute import SimpleImputer
+string_columns = [1,2,3,4,6,7,8,10,15]
 imputer = SimpleImputer(missing_values=np.nan, strategy='most_frequent')
-imputer.fit(X[:, [1,2,3,4,6,7,8,10,15]])
-X[:, [1,2,3,4,6,7,8,10,15]] = imputer.transform(X[:, [1,2,3,4,6,7,8,10,15]])
+imputer.fit(X[:, string_columns])
+X[:, string_columns] = imputer.transform(X[:, string_columns])
 
 # Encoding variables
 from sklearn.preprocessing import LabelEncoder
 le = LabelEncoder()
-X[:,1] = le.fit_transform(X[:,1])
-X[:,2] = le.fit_transform(X[:,2])
-X[:,3] = le.fit_transform(X[:,3])
-X[:,4] = le.fit_transform(X[:,4])
-X[:,6] = le.fit_transform(X[:,6])
-X[:,7] = le.fit_transform(X[:,7])
-X[:,8] = le.fit_transform(X[:,8])
-X[:,10] = le.fit_transform(X[:,10])
-X[:,15] = le.fit_transform(X[:,15])
-X[:,16] = le.fit_transform(X[:,16])
-
-# Using the elbow method to find the optimal number of clusters
-from sklearn.cluster import KMeans
-wcss = []
-for i in range(1, 11):
-    kmeans = KMeans(n_clusters = i, init = 'k-means++', random_state = 0)
-    kmeans.fit(X)
-    wcss.append(kmeans.inertia_)
-plt.plot(range(1, 11), wcss)
-plt.title('The Elbow Method')
-plt.xlabel('Number of clusters')
-plt.ylabel('WCSS')
-plt.show()
-
-number_of_clusters = 5
+for column in string_columns:
+    X[:,column] = le.fit_transform(X[:,column])
 
 # Training the K-Means model on the dataset
-kmeans = KMeans(n_clusters = number_of_clusters, init = 'k-means++')
-y_kmeans = kmeans.fit_predict(X)
-
+def GetClusters(X, X_means, max_cluster_size):
+    kmeans = KMeans(n_clusters = 2, init = 'k-means++')
+    y_kmeans = kmeans.fit_predict(X)
+    
+    for i in range(0,2):        
+        if (len(X[y_kmeans == i]) > max_cluster_size):
+            GetClusters(X[y_kmeans == i], X_means, max_cluster_size)
+        else:
+            cluster = 0
+            while(cluster in X_means):
+                cluster += 1
+                
+            X_means[cluster] = X[y_kmeans == i]
+            
+            cluster_column = []
+            for j in range(0,len(X_means[cluster])):
+                cluster_column.append(cluster) 
+            cluster_column =  np.array(cluster_column).reshape(len(cluster_column),1)
+            cluster_column = cluster_column.astype(float)
+                    
+            X_means[cluster] = np.append(X_means[cluster], cluster_column, axis = 1)
+                      
 X_means = dict()
-for cluster in range (0,number_of_clusters):
-    X_means[cluster] = X[y_kmeans == cluster]
-    cluster_column = []
-    for j in range(0,len(X_means[cluster])):
-        cluster_column.append(cluster) 
-    cluster_column =  np.array(cluster_column).reshape(len(cluster_column),1)
-    cluster_column = cluster_column.astype(float)          
-    X_means[cluster] = np.append(X_means[cluster], cluster_column, axis = 1)
-          
+GetClusters(X, X_means, max_cluster_size = 1000)
+
+# Creating a new X with cluster column
+# =============================================================================
+# X_new = []
+# for cluster in X_means:
+#     for row_kmeans in X_means[cluster]:
+#         mask = ((X[:,0] == row_kmeans[0]) & (X[:,1] == row_kmeans[1]) & (X[:,2] == row_kmeans[2]) & (X[:,3] == row_kmeans[3]) &
+#                 (X[:,4] == row_kmeans[4]) & (X[:,5] == row_kmeans[5]) & (X[:,6] == row_kmeans[6]) & (X[:,7] == row_kmeans[7]) &
+#                 (X[:,8] == row_kmeans[8]) & (X[:,9] == row_kmeans[9]) & (X[:,10] == row_kmeans[10]) & (X[:,11] == row_kmeans[11]) &
+#                 (X[:,12] == row_kmeans[12]) & (X[:,13] == row_kmeans[13]) & (X[:,14] == row_kmeans[14]) & (X[:,15] == row_kmeans[15]))   
+#         X_new.append(np.concatenate((X[mask][0], [cluster])))   
+# X_new = np.array(X_new)                                        
+# =============================================================================
     
 # Creating new dataset with clusters
 new_dataset = pd.DataFrame()
-max_cluster = 0
 for cluster in X_means:
     new_dataset = pd.concat([new_dataset, pd.DataFrame(X_means[cluster])])
-
+    
+for row in range (0,len(new_dataset.index)):
+    new_dataset.loc[row, 16] += 6
+    
+deposit_value = 0
+deposit_column = []
+for j in range(0,len(new_dataset.index)):
+    deposit_column.append(deposit_value) 
+deposit_column =  np.array(deposit_column).reshape(len(deposit_column),1)
+deposit_column = deposit_column.astype(int)
+new_dataset[17] = deposit_column
+    
 new_dataset = new_dataset.rename(columns={new_dataset.columns[0]: 'age',
                                           new_dataset.columns[1]: 'job',
                                           new_dataset.columns[2]: 'marital',
@@ -90,10 +106,12 @@ new_dataset = new_dataset.rename(columns={new_dataset.columns[0]: 'age',
                                           new_dataset.columns[13]: 'pdays',
                                           new_dataset.columns[14]: 'previous',
                                           new_dataset.columns[15]: 'poutcome',
-                                          new_dataset.columns[16]: 'deposit',
-                                          new_dataset.columns[17]: 'cluster'})
+                                          new_dataset.columns[16]: 'cluster',
+                                          new_dataset.columns[17]: 'deposit'})
 new_dataset = new_dataset.sample(frac=1).reset_index(drop=True)
-for row in range (0,len(new_dataset.index)):
-    new_dataset.iloc[row][16] = 1
+new_dataset.to_csv('data_clusters_no.csv')
 
-new_dataset.to_csv('data_clusters_yes.csv')
+
+dataset = pd.concat([pd.read_csv('data_clusters_yes.csv'), pd.read_csv('data_clusters_no.csv')])
+dataset = dataset.sample(frac=1).reset_index(drop=True)
+dataset.to_csv('data_clusters_devided.csv')
