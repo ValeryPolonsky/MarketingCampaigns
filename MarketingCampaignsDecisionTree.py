@@ -4,51 +4,34 @@ import matplotlib.pyplot as plt
 import pandas as pd
 
 # Importing the dataset
-sample_size_yes = 1000
-sample_size_no = 1000
-
 dataset = pd.read_csv('data.csv')
-dataset_yes = dataset[dataset["deposit"] == 'yes'].sample(n = sample_size_yes)
-dataset_no = dataset[dataset["deposit"] == 'no'].sample(n = sample_size_no)
-dataset_merged = pd.concat([dataset_yes,dataset_no])
-dataset_merged = dataset_merged.sample(frac=1).reset_index(drop=True)
-
-X = dataset_merged.iloc[:, :-1].values
-y = dataset_merged.iloc[:, -1].values
+    
+X = dataset.iloc[:, :-1].values
+y = dataset.iloc[:, -1].values
 
 # Taking care of missing data
 from sklearn.impute import SimpleImputer
+numeric_columns = [0,5,9,11,12,13,14]
 imputer = SimpleImputer(missing_values=np.nan, strategy='mean')
-imputer.fit(X[:, [0,5,9,11,12,13,14]])
-X[:, [0,5,9,11,12,13,14]] = imputer.transform(X[:, [0,5,9,11,12,13,14]])
+imputer.fit(X[:, numeric_columns])
+X[:,numeric_columns] = imputer.transform(X[:,numeric_columns])
 
 from sklearn.impute import SimpleImputer
+string_columns = [1,2,3,4,6,7,8,10,15]
 imputer = SimpleImputer(missing_values=np.nan, strategy='most_frequent')
-imputer.fit(X[:, [1,2,3,4,6,7,8,10,15]])
-X[:, [1,2,3,4,6,7,8,10,15]] = imputer.transform(X[:, [1,2,3,4,6,7,8,10,15]])
+imputer.fit(X[:,string_columns])
+X[:,string_columns] = imputer.transform(X[:,string_columns])
 
 # Encoding variables
 from sklearn.preprocessing import LabelEncoder
 le = LabelEncoder()
-X[:,1] = le.fit_transform(X[:,1])
-X[:,2] = le.fit_transform(X[:,2])
-X[:,3] = le.fit_transform(X[:,3])
-X[:,4] = le.fit_transform(X[:,4])
-X[:,6] = le.fit_transform(X[:,6])
-X[:,7] = le.fit_transform(X[:,7])
-X[:,8] = le.fit_transform(X[:,8])
-X[:,10] = le.fit_transform(X[:,10])
-X[:,15] = le.fit_transform(X[:,15])
+for column in string_columns:
+    X[:,column] = le.fit_transform(X[:,column])
 y = le.fit_transform(y)
-
+    
 # Splitting the dataset into the Training set and Test set
 from sklearn.model_selection import train_test_split
 X_train, X_test, y_train, y_test = train_test_split(X, y, test_size = 0.2)
-
-print('Y_train YES: {0}'.format(len(y_train[y_train == 1])))
-print('Y_train NO: {0}'.format(len(y_train[y_train == 0])))
-print('Y_test YES: {0}'.format(len(y_test[y_test == 1])))
-print('Y_test NO: {0}'.format(len(y_test[y_test == 0])))
 
 # Feature Scaling
 from sklearn.preprocessing import StandardScaler

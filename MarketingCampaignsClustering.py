@@ -5,12 +5,6 @@ import pandas as pd
 from sklearn.cluster import KMeans
 
 # Importing the dataset
-# =============================================================================
-# all_columns_without_deposit = ['age','job','marital','education','default',
-#                                'balance','housing','loan','contact','day',
-#                                'month','duration','campaign','pdays','previous',
-#                                'poutcome','deposit']
-# =============================================================================
 dataset = pd.read_csv('data.csv')
 dataset = dataset[dataset['deposit'] == 'no']
 
@@ -60,19 +54,6 @@ def GetClusters(X, X_means, max_cluster_size):
                       
 X_means = dict()
 GetClusters(X, X_means, max_cluster_size = 1000)
-
-# Creating a new X with cluster column
-# =============================================================================
-# X_new = []
-# for cluster in X_means:
-#     for row_kmeans in X_means[cluster]:
-#         mask = ((X[:,0] == row_kmeans[0]) & (X[:,1] == row_kmeans[1]) & (X[:,2] == row_kmeans[2]) & (X[:,3] == row_kmeans[3]) &
-#                 (X[:,4] == row_kmeans[4]) & (X[:,5] == row_kmeans[5]) & (X[:,6] == row_kmeans[6]) & (X[:,7] == row_kmeans[7]) &
-#                 (X[:,8] == row_kmeans[8]) & (X[:,9] == row_kmeans[9]) & (X[:,10] == row_kmeans[10]) & (X[:,11] == row_kmeans[11]) &
-#                 (X[:,12] == row_kmeans[12]) & (X[:,13] == row_kmeans[13]) & (X[:,14] == row_kmeans[14]) & (X[:,15] == row_kmeans[15]))   
-#         X_new.append(np.concatenate((X[mask][0], [cluster])))   
-# X_new = np.array(X_new)                                        
-# =============================================================================
     
 # Creating new dataset with clusters
 new_dataset = pd.DataFrame()
